@@ -1,30 +1,44 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:foodpanda_admin/common/local_admin_store.dart';
 import 'package:foodpanda_admin/models/shop.dart';
 
 class SearchShopController {
-  final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final LocalAdminStore _store = LocalAdminStore.instance;
 
   Future<List<Shop>> fetchSearchResult({
     required String search,
   }) async {
-    List<Shop> shopList = [];
-    var shopSnapshot = await firestore
-        .collection('sellers')
-        .where(
-          'shopName',
-          isGreaterThanOrEqualTo: search.toUpperCase(),
-        )
-        .get();
-
-    for (var tempData in shopSnapshot.docs) {
-      Shop tempShop = Shop.fromMap(tempData.data());
-      if (tempShop.isApproved) {
-        shopList.add(tempShop);
+    final query = search.trim().toLowerCase();
+    try {
+      final shopSnapshot = await FirebaseFirestore.instance
+          .collection('sellers')
+          .get()
+          .timeout(const Duration(seconds: 3));
+      if (shopSnapshot.docs.isNotEmpty) {
+        final remoteShops = shopSnapshot.docs
+            .map((doc) => Shop.fromMap(doc.data()))
+            .where(
+              (s) =>
+                  s.isApproved &&
+                  (query.isEmpty ||
+                      s.shopName.toLowerCase().contains(query) ||
+                      s.shopDescription.toLowerCase().contains(query)),
+            )
+            .toList();
+        if (remoteShops.isNotEmpty) {
+          return remoteShops;
+        }
       }
-    }
+    } catch (_) {}
 
-    return shopList;
+    return _store.shops
+        .where(
+          (s) =>
+              s.isApproved &&
+              (query.isEmpty ||
+                  s.shopName.toLowerCase().contains(query) ||
+                  s.shopDescription.toLowerCase().contains(query)),
+        )
+        .toList();
   }
 }

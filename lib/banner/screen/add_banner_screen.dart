@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:foodpanda_admin/authentication/widgets/custom_textbutton.dart';
@@ -31,31 +29,25 @@ class _AddBannerScreenState extends State<AddBannerScreen> {
   String voucherId = '';
   String voucherName = '';
 
-  takePhoto() async {
+  Future<void> takePhoto() async {
     imageXFile = await _picker.pickImage(
       source: ImageSource.camera,
       maxHeight: 720,
       maxWidth: 1280,
     );
-
-    setState(() {
-      imageXFile;
-    });
+    setState(() {});
   }
 
-  uploadPhoto() async {
+  Future<void> uploadPhoto() async {
     imageXFile = await _picker.pickImage(
       source: ImageSource.gallery,
       maxHeight: 720,
       maxWidth: 1280,
     );
-
-    setState(() {
-      imageXFile;
-    });
+    setState(() {});
   }
 
-  handleConfirm() async {
+  Future<void> handleConfirm() async {
     BannerController bannerController = BannerController();
     await bannerController.createBanner(
       image: imageXFile!,
@@ -63,10 +55,11 @@ class _AddBannerScreenState extends State<AddBannerScreen> {
       shopListId: shopListId,
       voucherId: voucherId.isEmpty ? null : voucherId,
     );
+    if (!mounted) return;
     Navigator.pop(context);
   }
 
-  onShopClick(String shopId, String shopName) {
+  void onShopClick(String shopId, String shopName) {
     if (shopListId.contains(shopId)) {
       openSnackbar(
           context, 'This shop has already been added!', scheme.primary);
@@ -78,7 +71,7 @@ class _AddBannerScreenState extends State<AddBannerScreen> {
     }
   }
 
-  selectVoucher(String id, String name) {
+  void selectVoucher(String id, String name) {
     if (voucherId.isNotEmpty || voucherName.isNotEmpty) {
       openSnackbar(
           context, 'This voucher has already been added!', scheme.primary);
@@ -113,7 +106,7 @@ class _AddBannerScreenState extends State<AddBannerScreen> {
             onPressed: imageXFile == null ||
                     descriptionText.isEmpty ||
                     shopListId.isEmpty
-                ? () {}
+                ? null
                 : handleConfirm,
             icon: Icon(
               Icons.add,
@@ -137,7 +130,6 @@ class _AddBannerScreenState extends State<AddBannerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     imageXFile == null
-                        // && imageUrl.isEmpty
                         ? DottedBorder(
                             color: Colors.grey[500]!,
                             strokeWidth: 1,
@@ -190,7 +182,6 @@ class _AddBannerScreenState extends State<AddBannerScreen> {
                                 children: [
                                   SizedBox(
                                     height: 180,
-                                    // width: MediaQuery.of(context).size.width,
                                     child: Center(
                                       child: Stack(
                                         children: [
@@ -199,14 +190,9 @@ class _AddBannerScreenState extends State<AddBannerScreen> {
                                             child: Container(
                                               decoration: BoxDecoration(
                                                 image: DecorationImage(
-                                                  image:
-                                                      //  imageUrl == '' ?
-                                                      FileImage(
-                                                    File(imageXFile!.path),
-                                                  )
-                                                  // : NetworkImage(imageUrl)
-                                                  //     as ImageProvider
-                                                  ,
+                                                  image: NetworkImage(
+                                                    imageXFile!.path,
+                                                  ),
                                                   fit: BoxFit.cover,
                                                 ),
                                               ),
@@ -220,7 +206,6 @@ class _AddBannerScreenState extends State<AddBannerScreen> {
                                               backgroundColor: Colors.white,
                                               onPressed: () {
                                                 setState(() {
-                                                  // imageUrl = '';
                                                   imageXFile = null;
                                                 });
                                               },
@@ -239,11 +224,9 @@ class _AddBannerScreenState extends State<AddBannerScreen> {
                       controller: descriptionController,
                       labelText: 'Description',
                       onChanged: (value) {
-                        setState(
-                          () {
-                            descriptionText = value;
-                          },
-                        );
+                        setState(() {
+                          descriptionText = value;
+                        });
                       },
                     ),
                     const SizedBox(height: 10),
@@ -340,6 +323,7 @@ class _AddBannerScreenState extends State<AddBannerScreen> {
                                 GestureDetector(
                                   onTap: () {
                                     voucherName = '';
+                                    voucherId = '';
                                     setState(() {});
                                   },
                                   child: Icon(

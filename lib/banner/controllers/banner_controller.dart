@@ -1,87 +1,89 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:foodpanda_admin/common/firebare_storage_repository.dart';
+import 'package:foodpanda_admin/common/local_admin_store.dart';
 import 'package:foodpanda_admin/models/banner.dart' as model;
 import 'package:image_picker/image_picker.dart';
 
 class BannerController {
-  final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final LocalAdminStore _store = LocalAdminStore.instance;
 
-  Future createBanner({
+  Future<void> createBanner({
     required XFile image,
     required String description,
     required List<String> shopListId,
     String? voucherId,
   }) async {
-    final DocumentReference ref;
+    final id = 'bnr_${DateTime.now().millisecondsSinceEpoch}';
+    String creatorUid = 'admin_01';
+    try {
+      creatorUid = FirebaseAuth.instance.currentUser?.uid ?? 'admin_01';
+    } catch (_) {}
 
-    ref = firestore.collection('banners').doc();
-
-    String imageUrl = await storeFileToFirebase(
-      'seller/${firebaseAuth.currentUser!.uid}/banner/${ref.id}',
-      File(image.path),
+    final imageUrl = await storeFileToFirebase(
+      'seller/$creatorUid/banner/$id',
+      image,
     );
 
-    model.Banner banner = model.Banner(
-      id: ref.id,
+    final banner = model.Banner(
+      id: id,
       imageUrl: imageUrl,
       description: description,
-      creatorId: firebaseAuth.currentUser!.uid,
+      creatorId: creatorUid,
       shopListId: shopListId,
       isApproved: true,
       createdAt: DateTime.now().millisecondsSinceEpoch,
       voucherId: voucherId,
     );
 
-    await ref.set(banner.toMap()).catchError((error) {
-      debugPrint(error);
-    });
+    _store.addBanner(banner);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('banners')
+          .doc(id)
+          .set(banner.toMap())
+          .timeout(const Duration(seconds: 3));
+    } catch (error) {
+      debugPrint(error.toString());
+    }
   }
 
   Stream<List<model.Banner>> fetchBanner() {
-    return firestore.collection('banners').snapshots().map(
-      (event) {
-        List<model.Banner> banners = [];
-        for (var document in event.docs) {
-          banners.add(model.Banner.fromMap(document.data()));
-        }
-        return banners;
-      },
-    );
+    return _store.watch(() => List<model.Banner>.from(_store.banners));
   }
 
-  Future changeBannerApproved({
+  Future<void> changeBannerApproved({
     required String bannerId,
     required bool isApproved,
   }) async {
-    final DocumentReference ref;
-    ref = firestore.collection('banners').doc(bannerId);
-
-    await ref.set(
-      {
-        "isApproved": isApproved,
-      },
-      SetOptions(merge: true),
-    ).catchError((error) {
-      debugPrint(error);
-    });
+    _store.setBannerApproved(bannerId, isApproved);
+    try {
+      await FirebaseFirestore.instance
+          .collection('banners')
+          .doc(bannerId)
+          .set({'isApproved': isApproved}, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 3));
+    } catch (error) {
+      debugPrint(error.toString());
+    }
   }
 
-  Future deleteBanner({
+  Future<void> deleteBanner({
     required String bannerId,
   }) async {
-    final DocumentReference ref;
-    ref = firestore.collection('banners').doc(bannerId);
-
-    await deleteFileStorage(
-        'seller/${firebaseAuth.currentUser!.uid}/banner/$bannerId');
-
-    await ref.delete().catchError((error) {
-      debugPrint(error);
-    });
+    _store.removeBanner(bannerId);
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? 'admin_01';
+      await deleteFileStorage('seller/$uid/banner/$bannerId');
+      await FirebaseFirestore.instance
+          .collection('banners')
+          .doc(bannerId)
+          .delete()
+          .timeout(const Duration(seconds: 3));
+    } catch (error) {
+      debugPrint(error.toString());
+    }
   }
 }

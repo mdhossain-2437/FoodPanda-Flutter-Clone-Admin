@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:foodpanda_admin/authentication/widgets/custom_textbutton.dart';
@@ -49,14 +47,15 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
 
   ShopController shopController = ShopController();
 
-  Future getFoodById() async {
+  Future<void> getFoodById() async {
     Food? food = await shopController.fetchFoodById(
       sellerId: widget.shop.uid,
       categoryId: widget.id,
       id: widget.foodId!,
     );
+    if (food == null || !mounted) return;
     setState(() {
-      nameController.text = food!.name;
+      nameController.text = food.name;
       descriptionController.text = food.description;
       priceController.text = food.price.toString();
       comparePriceController.text = food.comparePrice.toString();
@@ -78,17 +77,18 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
 
   @override
   void dispose() {
-    super.dispose();
     nameController.dispose();
     descriptionController.dispose();
     priceController.dispose();
     comparePriceController.dispose();
+    super.dispose();
   }
 
-  handleAddCategory() async {
+  Future<void> handleAddCategory() async {
     final internetProvider = context.read<InternetProvider>();
 
     await internetProvider.checkInternetConnection();
+    if (!mounted) return;
     if (internetProvider.hasInternet == false) {
       Navigator.pop(context);
       openSnackbar(context, 'Check your internet connection', scheme.primary);
@@ -96,45 +96,48 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
       await shopController.addNewFood(
         sellerId: widget.shop.uid,
         categoryId: widget.id,
-        name: nameController.text.trim().toString(),
-        description: descriptionController.text.trim().toString(),
-        price: double.parse(priceController.text),
-        comparePrice: double.parse(comparePriceController.text),
+        name: nameController.text.trim(),
+        description: descriptionController.text.trim(),
+        price: double.tryParse(priceController.text) ?? 0.0,
+        comparePrice: double.tryParse(comparePriceController.text) ?? 0.0,
         imageFile: imageXFile,
-        imageUrl: imageUrl == '' ? null : imageUrl,
+        imageUrl: imageUrl.isEmpty ? null : imageUrl,
         foodId: widget.foodId,
       );
-
+      if (!mounted) return;
       Navigator.pop(context);
     }
   }
 
-  takePhoto() async {
+  Future<void> takePhoto() async {
     imageXFile = await _picker.pickImage(
       source: ImageSource.camera,
       maxHeight: 720,
       maxWidth: 1280,
     );
-
-    setState(() {
-      imageXFile;
-    });
+    setState(() {});
   }
 
-  uploadPhoto() async {
+  Future<void> uploadPhoto() async {
     imageXFile = await _picker.pickImage(
       source: ImageSource.gallery,
       maxHeight: 720,
       maxWidth: 1280,
     );
-
-    setState(() {
-      imageXFile;
-    });
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isFormValid = nameText.isNotEmpty &&
+        descriptionText.isNotEmpty &&
+        priceText != 0 &&
+        ((imageUrl.isEmpty && imageXFile != null) ||
+            (imageUrl.isNotEmpty && imageXFile == null));
+
+    final String previewImagePath =
+        imageUrl.isNotEmpty ? imageUrl : (imageXFile?.path ?? '');
+
     return Scaffold(
       appBar: AppBar(
         foregroundColor: Colors.white,
@@ -147,22 +150,10 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: !(nameText.isNotEmpty &&
-                    descriptionText.isNotEmpty &&
-                    priceText != 0 &&
-                    ((imageUrl.isEmpty && imageXFile != null) ||
-                        (imageUrl.isNotEmpty && imageXFile == null)))
-                ? null
-                : handleAddCategory,
+            onPressed: !isFormValid ? null : handleAddCategory,
             icon: Icon(
               Icons.add,
-              color: !(nameText.isNotEmpty &&
-                      descriptionText.isNotEmpty &&
-                      priceText != 0 &&
-                      ((imageUrl.isEmpty && imageXFile != null) ||
-                          (imageUrl.isNotEmpty && imageXFile == null)))
-                  ? Colors.grey[400]
-                  : Colors.white,
+              color: !isFormValid ? Colors.grey[400] : Colors.white,
             ),
           ),
         ],
@@ -189,11 +180,9 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                       controller: nameController,
                       labelText: 'Name',
                       onChanged: (value) {
-                        setState(
-                          () {
-                            nameText = value;
-                          },
-                        );
+                        setState(() {
+                          nameText = value;
+                        });
                       },
                     ),
                     const SizedBox(height: 30),
@@ -201,11 +190,9 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                       controller: descriptionController,
                       labelText: 'Description',
                       onChanged: (value) {
-                        setState(
-                          () {
-                            descriptionText = value;
-                          },
-                        );
+                        setState(() {
+                          descriptionText = value;
+                        });
                       },
                     ),
                     const SizedBox(height: 30),
@@ -229,8 +216,9 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                             isNumPad: true,
                             onChanged: (value) {
                               setState(() {
-                                priceText =
-                                    value.isEmpty ? 0 : double.parse(value);
+                                priceText = value.isEmpty
+                                    ? 0
+                                    : (double.tryParse(value) ?? 0);
                               });
                             },
                           ),
@@ -244,8 +232,9 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                             isNumPad: true,
                             onChanged: (value) {
                               setState(() {
-                                comparePriceText =
-                                    value.isEmpty ? null : double.parse(value);
+                                comparePriceText = value.isEmpty
+                                    ? null
+                                    : double.tryParse(value);
                               });
                             },
                           ),
@@ -321,16 +310,14 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                                             aspectRatio: 16 / 9,
                                             child: Container(
                                               decoration: BoxDecoration(
-                                                image: DecorationImage(
-                                                  image: imageUrl == ''
-                                                      ? FileImage(
-                                                          File(
-                                                              imageXFile!.path),
-                                                        )
-                                                      : NetworkImage(imageUrl)
-                                                          as ImageProvider,
-                                                  fit: BoxFit.cover,
-                                                ),
+                                                image: previewImagePath
+                                                        .isNotEmpty
+                                                    ? DecorationImage(
+                                                        image: NetworkImage(
+                                                            previewImagePath),
+                                                        fit: BoxFit.cover,
+                                                      )
+                                                    : null,
                                               ),
                                             ),
                                           ),
@@ -373,7 +360,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                       comparePrice:
                           comparePriceText == 0.0 ? null : comparePriceText,
                       image: imageUrl,
-                      imageFile: imageXFile != null ? imageXFile : null,
+                      imageFile: imageXFile,
                       onTap: () {},
                     )
                   ],
@@ -386,11 +373,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
             CustomTextButton(
               text: 'Confirm',
               onPressed: handleAddCategory,
-              isDisabled: !(nameText.isNotEmpty &&
-                  descriptionText.isNotEmpty &&
-                  priceText != 0 &&
-                  ((imageUrl.isEmpty && imageXFile != null) ||
-                      (imageUrl.isNotEmpty && imageXFile == null))),
+              isDisabled: !isFormValid,
             ),
           ],
         ),

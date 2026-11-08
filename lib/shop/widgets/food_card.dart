@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:foodpanda_admin/constants/colors.dart';
 import 'package:foodpanda_admin/shop/controllers/shop_controller.dart';
@@ -18,9 +16,9 @@ class FoodCard extends StatefulWidget {
   final String? id;
   final VoidCallback? onEditTap;
   final VoidCallback? onDeleteTap;
-  XFile? imageFile;
+  final XFile? imageFile;
   bool? isPublished;
-  String? categoryId;
+  final String? categoryId;
 
   FoodCard({
     super.key,
@@ -44,9 +42,9 @@ class FoodCard extends StatefulWidget {
 }
 
 class _FoodCardState extends State<FoodCard> {
-  ShopController shopController = ShopController();
+  final ShopController shopController = ShopController();
 
-  changeIsPublished(bool value) async {
+  Future<void> changeIsPublished(bool value) async {
     await shopController.changeIsPublishedFood(
       sellerId: widget.sellerId,
       id: widget.id!,
@@ -57,6 +55,10 @@ class _FoodCardState extends State<FoodCard> {
 
   @override
   Widget build(BuildContext context) {
+    final String resolvedImagePath = widget.imageFile != null
+        ? widget.imageFile!.path
+        : widget.image;
+
     return MyDismissible(
       id: widget.id,
       onEditTap: widget.onEditTap,
@@ -64,7 +66,7 @@ class _FoodCardState extends State<FoodCard> {
       dialogSubtitle: 'Are you sure to delete this food item?',
       children: InkWell(
         onTap: widget.onTap,
-        splashColor: scheme.primary.withOpacity(0.2),
+        splashColor: scheme.primary.withValues(alpha: 0.2),
         child: Stack(
           children: [
             Padding(
@@ -147,16 +149,20 @@ class _FoodCardState extends State<FoodCard> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(10),
                           color: scheme.primary,
-                          image: DecorationImage(
-                            image: widget.imageFile == null
-                                ? NetworkImage(
-                                    widget.image,
-                                  )
-                                : FileImage(File(widget.imageFile!.path))
-                                    as ImageProvider,
-                            fit: BoxFit.cover,
-                          ),
+                          image: resolvedImagePath.isNotEmpty
+                              ? DecorationImage(
+                                  image: NetworkImage(resolvedImagePath),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
                         ),
+                        child: resolvedImagePath.isEmpty
+                            ? const Icon(
+                                Icons.fastfood_outlined,
+                                color: Colors.white,
+                                size: 36,
+                              )
+                            : null,
                       ),
                     ],
                   ),
@@ -172,18 +178,7 @@ class _FoodCardState extends State<FoodCard> {
                   color: Colors.white,
                 ),
                 backgroundColor: scheme.primary,
-                onPressed: () {
-                  // if (widget.id != null && widget.categoryId != null) {
-                  //   Navigator.pushNamed(
-                  //     context,
-                  //     AddCustomizationScreen.routeName,
-                  //     arguments: AddCustomizationScreen(
-                  //       categoryId: widget.categoryId!,
-                  //       foodId: widget.id!,
-                  //     ),
-                  //   );
-                  // }
-                },
+                onPressed: widget.onTap,
               ),
             )
           ],

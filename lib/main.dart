@@ -10,7 +10,19 @@ import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: 'AIzaSyBVvoUDdeQlX2N9W_R7IOAZWPZvha1CTv4',
+        appId: '1:360679595267:android:93f102c1478d329eba9d36',
+        messagingSenderId: '360679595267',
+        projectId: 'foodpanda-7ecb8',
+        storageBucket: 'foodpanda-7ecb8.appspot.com',
+      ),
+    );
+  } catch (_) {
+    // Fallback to local admin store if Firebase is already initialized or offline
+  }
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
   ));
@@ -31,14 +43,16 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'FoodPanda Admin',
         theme: ThemeData(
-          // useMaterial3: true,
           colorScheme: scheme,
           scaffoldBackgroundColor: Colors.white,
-          dialogBackgroundColor: Colors.white,
-          appBarTheme: const AppBarTheme(
-            elevation: 0,
+          dialogTheme: const DialogThemeData(
+            backgroundColor: Colors.white,
           ),
-          unselectedWidgetColor: scheme.primary,
+          appBarTheme: AppBarTheme(
+            elevation: 0,
+            backgroundColor: scheme.primary,
+            foregroundColor: Colors.white,
+          ),
         ),
         onGenerateRoute: (settings) => generateRoute(settings),
         home: const SplashScreen(),

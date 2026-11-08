@@ -1,0 +1,8 @@
+{
+  "name": "FoodPanda Admin",
+  "description": "FoodPanda Admin Portal for managing shops, menus, categories, vouchers, riders, and promotional banners.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
